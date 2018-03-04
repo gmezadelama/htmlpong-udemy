@@ -1,29 +1,41 @@
 <html>
 <canvas id="gameCanvas" width="800" height="600"></canvas>
 <script>
-  let canvas
-  let canvasContext
-  let ballX = 50
-  let ballY = 50
-  let ballSpeedX = 5
-  let ballSpeedY = 5
-  let interval
-  let paddle1Y = 250
-  const PADDLE_HEIGHT = 100
+  const BALL_ORIGINAL_SPEED_X = 5
+  const BALL_ORIGINAL_SPEED_Y = 5
+  const PADDLE_ORIGINAL_HEIGHT = 100
+  const PADDLE_ORIGINAL_WIDTH = 10
+  const ORIGINAL_BALL_RADIO = 10
   const MAX_CANVAS_WIDTH = 800
   const MAX_CANVAS_HEIGHT = 600
   const X_ASPECT_RATIO = 4
   const Y_ASPECT_RATIO = 3
+  const PADDLE2_STEP = 6
+
+  let canvas
+  let canvasContext
+  let ballX = 50
+  let ballY = 50
+  let ballSpeedX = BALL_ORIGINAL_SPEED_X
+  let ballSpeedY = BALL_ORIGINAL_SPEED_Y
+  let interval
+  let paddle1Y
+  let paddle2Y
+  let paddleWidth = PADDLE_ORIGINAL_WIDTH
+  let paddleHeight = PADDLE_ORIGINAL_HEIGHT
+  let ballRadio = ORIGINAL_BALL_RADIO
 
   window.onload = () => {
     console.log('Hello World!')
     canvas = document.getElementById('gameCanvas')
     canvasContext = canvas.getContext('2d')
     // for the first time
-    adjustCanvasSize(canvas)()
+    applyResponsiveness(canvas)()
 
     // for every resize
-    window.addEventListener('resize', adjustCanvasSize(canvas))
+    window.addEventListener('resize', applyResponsiveness(canvas))
+
+    initPaddlePositions()
 
     const framesPerSecond = 60
     interval = setInterval(gameCall, 1000 / framesPerSecond)
@@ -35,12 +47,33 @@
     })
   }
 
-  adjustCanvasSize = (canvas) => () => {
+  initPaddlePositions = () => {
+    paddle1Y = (canvas.height / 2) - (paddleHeight / 2)
+    paddle2Y = paddle1Y
+  }
+
+  applyResponsiveness = (canvas) => () => {
     let aspectRatio = MAX_CANVAS_WIDTH / MAX_CANVAS_HEIGHT
     let width = window.innerWidth - 20
 
     canvas.width = width
-    canvas.height = Math.min(MAX_CANVAS_HEIGHT, window.innerWidth / aspectRatio)
+    canvas.height = clamp(window.innerWidth / aspectRatio, null, MAX_CANVAS_HEIGHT)
+    recalibrateSpeed()
+    resizeGameElements()
+  }
+
+  // ballSpeedX and ballSpeedY are readjusted basing their values
+  // on a speed == (5,5) for a canvas 800x600
+  recalibrateSpeed = () => {
+    ballSpeedX = BALL_ORIGINAL_SPEED_X * (canvas.width / MAX_CANVAS_WIDTH)
+    ballSpeedY = BALL_ORIGINAL_SPEED_Y * (canvas.height / MAX_CANVAS_HEIGHT)
+  }
+
+  // ball and paddles
+  resizeGameElements = () => {
+    ballRadio = ORIGINAL_BALL_RADIO * (canvas.width / MAX_CANVAS_WIDTH)
+    paddleWidth = PADDLE_ORIGINAL_WIDTH * (canvas.width / MAX_CANVAS_WIDTH)
+    paddleHeight = PADDLE_ORIGINAL_HEIGHT * (canvas.height / MAX_CANVAS_HEIGHT)
   }
 
   const calculateMousePos = (e) => {
@@ -50,7 +83,7 @@
     let mouseY = e.clientY - rect.top - root.scrollTop
     return {
       x: mouseX,
-      y: mouseY - (PADDLE_HEIGHT / 2)
+      y: clamp(0, mouseY - (paddleHeight))
     }
   }
 
@@ -60,15 +93,45 @@
   }
 
   const moveEverything = () => {
+    computerMovement()
+
     ballX += ballSpeedX
     ballY += ballSpeedY
-    console.log('(ballX, ballY)', `( ${ballX}, ${ballY})`)
-    if (ballX >= canvas.width || ballX <= 0) {
-      ballSpeedX = -ballSpeedX
+    // console.log('(ballX, ballY)', `( ${ballX}, ${ballY})`)
+    if (ballX <= 0) {
+      if (hasHitPaddle(paddle1Y)) {
+          ballSpeedX = -ballSpeedX
+      } else {
+        ballReset()
+      }
+    } else if (ballX >= canvas.width) {
+      if (hasHitPaddle(paddle2Y)) {
+          ballSpeedX = -ballSpeedX
+      } else {
+        ballReset()
+      }
     }
     if (ballY >= canvas.height || ballY <= 0) {
       ballSpeedY = -ballSpeedY
     }
+  }
+
+  const computerMovement = () => {
+    let paddle2YCenter = paddle2Y + paddleHeight / 2
+    let direction = paddle2YCenter < ballY ? 1 : -1
+    paddle2Y += direction * PADDLE2_STEP
+    paddle2Y = clamp(paddle2Y, 0, canvas.height - paddleHeight)
+    console.log('paddle2Y', paddle2Y)
+  }
+
+  const hasHitPaddle = (paddleY) => {
+    return (ballY > paddleY && ballY < (paddleY + paddleHeight))
+  }
+
+  const ballReset = () => {
+    ballSpeedX = -ballSpeedX
+    ballX = canvas.width / 2
+    ballY = canvas.height / 2
   }
 
   const drawEverything = () => {
@@ -76,10 +139,13 @@
     colorRect(0, 0, canvas.width, canvas.height, 'black')
 
     // this is the left player paddle
-    colorRect(0, paddle1Y, 10, PADDLE_HEIGHT, 'white')
+    colorRect(0, paddle1Y, paddleWidth, paddleHeight, 'white')
+
+    // this is the right player paddle
+    colorRect(canvas.width - paddleWidth, paddle2Y, paddleWidth, paddleHeight, 'white')
 
     // next line draws the ball
-    colorCircle(ballX, ballY, 10, 'white')
+    colorCircle(ballX, ballY, ballRadio, 'white')
   }
 
   const colorCircle = (centerX, centerY, radius, color) => {
@@ -99,5 +165,19 @@
     canvasContext.fillStyle = color
     canvasContext.fillRect(leftX, topY, width, height)
   }
+
+  const clamp = (value, min, max) => {
+    if (notNullNorUndefined(max) && notNullNorUndefined(min)) {
+      return Math.max(min, Math.min(value, max))
+    } else if (notNullNorUndefined(min)) {
+      return Math.max(min, value)
+    } else if (notNullNorUndefined(max)) {
+      return Math.min(value, max)
+    } else {
+      return value
+    }
+  }
+
+  const notNullNorUndefined = (value) => (value !== null && value !== undefined)
 </script>
 </html>
