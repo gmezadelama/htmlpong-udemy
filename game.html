@@ -10,18 +10,37 @@
   let interval
   let paddle1Y = 250
   const PADDLE_HEIGHT = 100
+  const MAX_CANVAS_WIDTH = 800
+  const MAX_CANVAS_HEIGHT = 600
+  const X_ASPECT_RATIO = 4
+  const Y_ASPECT_RATIO = 3
 
   window.onload = () => {
     console.log('Hello World!')
     canvas = document.getElementById('gameCanvas')
     canvasContext = canvas.getContext('2d')
+    // for the first time
+    adjustCanvasSize(canvas)()
+
+    // for every resize
+    window.addEventListener('resize', adjustCanvasSize(canvas))
+
     const framesPerSecond = 60
     interval = setInterval(gameCall, 1000 / framesPerSecond)
+
 
     canvas.addEventListener('mousemove', (e) => {
       let mousePos = calculateMousePos(e)
       paddle1Y = mousePos.y
     })
+  }
+
+  adjustCanvasSize = (canvas) => () => {
+    let aspectRatio = MAX_CANVAS_WIDTH / MAX_CANVAS_HEIGHT
+    let width = window.innerWidth - 20
+
+    canvas.width = width
+    canvas.height = Math.min(MAX_CANVAS_HEIGHT, window.innerWidth / aspectRatio)
   }
 
   const calculateMousePos = (e) => {
