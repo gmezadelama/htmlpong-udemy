@@ -1,0 +1,84 @@
+<html>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+  let canvas
+  let canvasContext
+  let ballX = 50
+  let ballY = 50
+  let ballSpeedX = 5
+  let ballSpeedY = 5
+  let interval
+  let paddle1Y = 250
+  const PADDLE_HEIGHT = 100
+
+  window.onload = () => {
+    console.log('Hello World!')
+    canvas = document.getElementById('gameCanvas')
+    canvasContext = canvas.getContext('2d')
+    const framesPerSecond = 60
+    interval = setInterval(gameCall, 1000 / framesPerSecond)
+
+    canvas.addEventListener('mousemove', (e) => {
+      let mousePos = calculateMousePos(e)
+      paddle1Y = mousePos.y
+    })
+  }
+
+  const calculateMousePos = (e) => {
+    let rect = canvas.getBoundingClientRect()
+    let root = document.documentElement
+    let mouseX = e.clientX - rect.left - root.scrollLeft
+    let mouseY = e.clientY - rect.top - root.scrollTop
+    return {
+      x: mouseX,
+      y: mouseY - (PADDLE_HEIGHT / 2)
+    }
+  }
+
+  const gameCall = () => {
+    moveEverything()
+    drawEverything()
+  }
+
+  const moveEverything = () => {
+    ballX += ballSpeedX
+    ballY += ballSpeedY
+    console.log('(ballX, ballY)', `( ${ballX}, ${ballY})`)
+    if (ballX >= canvas.width || ballX <= 0) {
+      ballSpeedX = -ballSpeedX
+    }
+    if (ballY >= canvas.height || ballY <= 0) {
+      ballSpeedY = -ballSpeedY
+    }
+  }
+
+  const drawEverything = () => {
+    // next line blancks out the screen with black color
+    colorRect(0, 0, canvas.width, canvas.height, 'black')
+
+    // this is the left player paddle
+    colorRect(0, paddle1Y, 10, PADDLE_HEIGHT, 'white')
+
+    // next line draws the ball
+    colorCircle(ballX, ballY, 10, 'white')
+  }
+
+  const colorCircle = (centerX, centerY, radius, color) => {
+    canvasContext.fillStyle = color
+    canvasContext.beginPath()
+    canvasContext.arc(centerX, centerY, radius, 0, Math.PI * 2, true)
+    canvasContext.fill()
+  }
+
+  const checkEnd = () => {
+    if (ballX > canvas.width) {
+      clearInterval(interval)
+    }
+  }
+
+  const colorRect = (leftX, topY, width, height, color) => {
+    canvasContext.fillStyle = color
+    canvasContext.fillRect(leftX, topY, width, height)
+  }
+</script>
+</html>
